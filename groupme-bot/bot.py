@@ -3,6 +3,8 @@ import time
 import json
 import os
 from dotenv import load_dotenv
+from urllib import parse, request
+from googletrans import Translator
 
 load_dotenv()
 
@@ -38,10 +40,46 @@ def process_message(message):
     """Process and respond to a message."""
     global LAST_MESSAGE_ID
     text = message["text"].lower()
+    sender_id = message["sender_id"]
+    sender_type = message["sender_type"]
+    name = message["name"]
 
     # i.e. responding to a specific message (note that this checks if "hello bot" is anywhere in the message, not just the beginning)
-    if "hello bot" in text:
-        send_message("sup")
+
+    if sender_id == "40293401" and "good morning" not in text and "good night" not in text and sender_type != "bot" and "sticker" not in text and "translate" not in text:
+        send_message("ReeBot here!")
+    elif sender_type != "bot": # filter out bot senders
+        if "good morning" in text: 
+            send_message("Good morning " + name)
+        elif "good night" in text:
+            send_message("Good night " + name)
+        elif "sticker" in text:
+            content = text.split(" ")[-1]
+            giphy_endpoint = "http://api.giphy.com/v1/stickers/search"
+            parameters = parse.urlencode({
+                "q": content, 
+                "api_key": "iRyCTPbjHA647357911tLIU6RtMnzRKa", 
+                "limit": "5", 
+                "rating": "g", 
+                "lang": "en"})
+
+            with request.urlopen("".join((giphy_endpoint, "?", parameters))) as response:
+                sticker = json.loads(response.read())
+
+            if sticker:
+                sticker_url = sticker["data"][0]["embed_url"]
+                send_message(sticker_url)
+            else:
+                send_message("Sorry, no sticker found.", [])
+        elif "translate" in text:
+            lang = text.split(" ")[-1]
+            map = {"spanish": "es", "french": "fr", "japanese": "ja", "mandarin": "zh-CN", "korean": "ko", "hindi": "hi"}
+            content = "".join([element.strip("\"") for element in text.split(" ")[1:-2]])
+            if content.startswith("translate"):
+                content = content[9:]
+            translator = Translator()
+            translation = translator.translate(content, dest = map[lang])
+            send_message(translation.text)
 
     LAST_MESSAGE_ID = message["id"]
 
